@@ -15,6 +15,7 @@ tokenizer_tests: $(BUILD_DIR)/tokenizer.dbg.san
 	$< < ../simplified-lang-tests/1-multiplicative-return-main.c 
 	$< < ../simplified-lang-tests/2-additive-return-main.c 
 	$< < ../simplified-lang-tests/3-bit_shift-return-main.c 
+	$< < ../simplified-lang-tests/4-relative-return-main.c
 	
 parser_tests: $(BUILD_DIR)/parser.dbg.san # builld/parser.dbg.san # leaks of ast nodes in parsing are not fixed for now.
 	#$< < samples/1-simple_main.c
@@ -25,6 +26,7 @@ parser_tests: $(BUILD_DIR)/parser.dbg.san # builld/parser.dbg.san # leaks of ast
 	$< < ../simplified-lang-tests/1-multiplicative-return-main.c 
 	$< < ../simplified-lang-tests/2-additive-return-main.c 
 	$< < ../simplified-lang-tests/3-bit_shift-return-main.c 
+	$< < ../simplified-lang-tests/4-relative-return-main.c
 
 parser_counterexamples: src/parser.y
 	bison -Wall -fsyntax-only -Wcounterexamples $<

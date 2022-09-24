@@ -46,7 +46,21 @@ struct ast_bit_and_expr;
 
 struct ast_equal_expr;
 
-struct ast_rel_expr;
+enum ast_rel_expr_op {
+	AST_RELATION_EXPR_OPERATION_COMPARE_LESS,
+	AST_RELATION_EXPR_OPERATION_COMPARE_GREATER,
+	AST_RELATION_EXPR_OPERATION_COMPARE_LESS_EQUAL,
+	AST_RELATION_EXPR_OPERATION_COMPARE_GREATER_EQUAL
+};
+struct ast_rel_expr {
+	struct vector* bit_shift_exprs;
+	struct vector* ops;
+};
+
+struct ast_rel_expr* ast_rel_expr_new();
+struct ast_rel_expr* ast_rel_expr_delete(struct ast_rel_expr* rel_expr);
+
+void ast_rel_expr_print(FILE* file, struct ast_rel_expr const* rel_expr, size_t indent_level);
 
 enum ast_bit_shift_expr_op {
 	AST_BIT_SHIFT_EXPR_OPERATION_SHIFT_RIGHT,

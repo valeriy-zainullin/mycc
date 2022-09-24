@@ -100,6 +100,7 @@ TODO: standard reference here.
 	//struct ast_jump_stmt*             jump_stmt;
 	struct ast_return_stmt*           jump_stmt;
 
+	struct ast_rel_expr*              rel_expr;
 	struct ast_bit_shift_expr*        bit_shift_expr;
 	struct ast_add_expr*              add_expr;
 	struct ast_mult_expr*             mult_expr;
@@ -134,16 +135,17 @@ TODO: standard reference here.
 // iteration_statement
 %type<jump_stmt> jump_statement
 
-%type<bit_shift_expr> expression
-%type<bit_shift_expr> assignment_expression
-%type<bit_shift_expr> conditional_expression
-%type<bit_shift_expr> logical_OR_expression
-%type<bit_shift_expr> logical_AND_expression
-%type<bit_shift_expr> inclusive_OR_expression
-%type<bit_shift_expr> exclusive_OR_expression
-%type<bit_shift_expr> AND_expression
-%type<bit_shift_expr> equality_expression
-%type<bit_shift_expr> relational_expression
+%type<rel_expr>       expression
+%type<rel_expr>       assignment_expression
+%type<rel_expr>       conditional_expression
+%type<rel_expr>       logical_OR_expression
+%type<rel_expr>       logical_AND_expression
+%type<rel_expr>       inclusive_OR_expression
+%type<rel_expr>       exclusive_OR_expression
+%type<rel_expr>       AND_expression
+// %type<eql_expr> equality_expression
+%type<rel_expr>       equality_expression
+%type<rel_expr>       relational_expression
 %type<bit_shift_expr> shift_expression
 %type<add_expr>       additive_expression
 %type<mult_expr>      multiplicative_expression
@@ -153,7 +155,7 @@ TODO: standard reference here.
 %type<primary_expr>   primary_expression
 %type<constant>       constant
 
-%type<bit_shift_expr> expression_opt
+%type<rel_expr>       expression_opt
 
 //%destructor { *output = $$; } <translation_unit>
 // %destructor { if ($$ != NULL) { $$ = ast_external_decl_node_delete($$); } } <external_decl>
@@ -485,11 +487,88 @@ shift_expression:
 	relational-expression >= shift-expression
 */
 relational_expression:
-  shift_expression { $$ = $1; }
-| relational_expression punctuator_less shift_expression
-| relational_expression punctuator_greater shift_expression
-| relational_expression punctuator_less_equal shift_expression
-| relational_expression punctuator_greater_equal shift_expression
+  shift_expression {
+      struct ast_rel_expr* rel_expr = ast_rel_expr_new();
+      if (rel_expr == NULL) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      printf("vector_push: 1.\n");
+      if (!vector_push(rel_expr->bit_shift_exprs, &$1)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      $$ = rel_expr;
+  }
+| relational_expression punctuator_less shift_expression {
+      printf("vector_push: 4.\n");
+      struct ast_rel_expr* rel_expr = $1;
+      if (!vector_push(rel_expr->bit_shift_exprs, &$3)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      printf("vector_push: 5.\n");
+      enum ast_rel_expr_op op = AST_RELATION_EXPR_OPERATION_COMPARE_LESS;
+      if (!vector_push(rel_expr->ops, &op)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      $$ = rel_expr;
+  }
+| relational_expression punctuator_greater shift_expression {
+      printf("vector_push: 4.\n");
+      struct ast_rel_expr* rel_expr = $1;
+      if (!vector_push(rel_expr->bit_shift_exprs, &$3)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      printf("vector_push: 5.\n");
+      enum ast_rel_expr_op op = AST_RELATION_EXPR_OPERATION_COMPARE_GREATER;
+      if (!vector_push(rel_expr->ops, &op)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      $$ = rel_expr;
+  }
+| relational_expression punctuator_less_equal shift_expression {
+      printf("vector_push: 4.\n");
+      struct ast_rel_expr* rel_expr = $1;
+      if (!vector_push(rel_expr->bit_shift_exprs, &$3)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      printf("vector_push: 5.\n");
+      enum ast_rel_expr_op op = AST_RELATION_EXPR_OPERATION_COMPARE_LESS_EQUAL;
+      if (!vector_push(rel_expr->ops, &op)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      $$ = rel_expr;
+  }
+| relational_expression punctuator_greater_equal shift_expression {
+      printf("vector_push: 4.\n");
+      struct ast_rel_expr* rel_expr = $1;
+      if (!vector_push(rel_expr->bit_shift_exprs, &$3)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      printf("vector_push: 5.\n");
+      enum ast_rel_expr_op op = AST_RELATION_EXPR_OPERATION_COMPARE_GREATER_EQUAL;
+      if (!vector_push(rel_expr->ops, &op)) {
+          assert(false);
+          // TODO: handle this case.
+      }
+      
+      $$ = rel_expr;
+  }
 ;
 
 /*
