@@ -24,9 +24,9 @@
 %option yylineno 
 %{
 	#include <assert.h>
-	#define YY_USER_ACTION assert(yylineno > 0); tokenizer_current_location.line = (size_t) yylineno;
+	#define YY_USER_ACTION assert(yylineno > 0); tokenizer::current_location.line = (size_t) yylineno;
 	#include "tokenizer.h"
-	struct tokenizer_location tokenizer_current_location = {0};
+	tokenizer::Location tokenizer::current_location = {"??", 0, 0};
 	
 	#include <string.h>
 	void accnt_mltln_comment_in_location(char const* text);
@@ -337,27 +337,29 @@ Paragraph 6.4.2.1, semantics:
 */
 
 %%
-{blank}                                  { tokenizer_current_location.col += 1;                }
-\r\n?|\n                                 { tokenizer_current_location.col = 1;                 }
+{blank}                                  { tokenizer::current_location.col += 1;                }
+\r\n?|\n                                 { tokenizer::current_location.col = 1;                 }
 
 "//".*                                   { /* location column is updated in the rule for \r and \n. */ }
 "/*"([^*]|[*][^/])*"*/"                  { accnt_mltln_comment_in_location(yytext);            }
 
-{keyword}                                { return tokenizer_handle_keyword(yytext);            }
+{keyword}                                { return tokenizer::handle_keyword(yytext);            }
 
-{identifier}                             { return tokenizer_handle_identifier(yytext);         }
+{identifier}                             { return tokenizer::handle_identifier(yytext);         }
 
-{integer_constant}                       { return tokenizer_handle_integer_constant(yytext);   }
+{integer_constant}                       { return tokenizer::handle_integer_constant(yytext);   }
 
-{decimal_floating_constant}              { return tokenizer_handle_floating_constant(yytext);  }
-{hexadecimal_floating_constant}          { return tokenizer_handle_floating_constant(yytext);  }
+{decimal_floating_constant}              { return tokenizer::handle_floating_constant(yytext);  }
+{hexadecimal_floating_constant}          { return tokenizer::handle_floating_constant(yytext);  }
 
-{character_constant}                     { return tokenizer_handle_character_constant(yytext); }
-{string_literal}                         { return tokenizer_handle_string_literal(yytext);     }
+{character_constant}                     { return tokenizer::handle_character_constant(yytext); }
+{string_literal}                         { return tokenizer::handle_string_literal(yytext);     }
 
-{punctuator}                             { return tokenizer_handle_punctuator(yytext);         }
+{punctuator}                             { return tokenizer::handle_punctuator(yytext);         }
 
-.                                        { return tokenizer_handle_invalid_token(yytext);      }
+.                                        { return tokenizer::handle_invalid_token(yytext);      }
+
+<<EOF>>                                  { return 0; /* Token boundary if file ends, tokens can't continue in the next file. */ }
 %%
 
 #include <stdint.h>
@@ -383,12 +385,12 @@ static uint32_t count_newlines(char const* text) {
 
 void accnt_mltln_comment_in_location(const char* text) {
 	uint32_t num_lines = count_newlines(text);
-	tokenizer_current_location.line += num_lines;
+	tokenizer::current_location.line += num_lines;
 	if (num_lines > 0) {
-		tokenizer_current_location.col = 1;
+		tokenizer::current_location.col = 1;
 	}
 }
 
-void tokenizer_notify_token_handled() {
-	tokenizer_current_location.col += strlen(yytext);
+void tokenizer::notify_token_handled() {
+	tokenizer::current_location.col += strlen(yytext);
 }

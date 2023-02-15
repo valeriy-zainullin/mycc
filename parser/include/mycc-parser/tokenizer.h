@@ -1,32 +1,38 @@
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
+#include <string>
 
-struct tokenizer_location {
-	size_t line;
-	size_t col;
-};
-// There aren't any multiline tokens. Comments are discarded anyway.
+namespace tokenizer {
+	struct Location {
+		std::string filename;
+		size_t line;
+		size_t col;
+	};
+	
+	// There aren't any multiline tokens. Comments are discarded anyway.
 
-// Limit file size. Not more than 1GB.
-// typedef uint32_t token_offset;
+	// Limit file size. Not more than 1GB.
+	// typedef uint32_t token_offset;
 
-int tokenizer_handle_keyword(char const* text);
-int tokenizer_handle_identifier(char const* text);
+	int handle_keyword(char const* text);
+	int handle_identifier(char const* text);
+	
+	int handle_integer_constant(char const* text);
+	int handle_floating_constant(char const* text);
+	int handle_character_constant(char const* text);
+	int handle_string_literal(char const* text);
+	int handle_punctuator(char const* text);
+	
+	int handle_invalid_token(char const* text);
+	
+	void notify_token_handled();
 
-int tokenizer_handle_integer_constant(char const* text);
-int tokenizer_handle_floating_constant(char const* text);
-int tokenizer_handle_character_constant(char const* text);
-int tokenizer_handle_string_literal(char const* text);
-int tokenizer_handle_punctuator(char const* text);
+	// TODO: use bison reentrant tokenizer and parser at some point. Will take some refactoring, but it's a better style.
+	// This will become a parameter to yylex.
+	extern Location current_location;
+}
 
-int tokenizer_handle_invalid_token(char const* text);
+#include <cstdio>
 
-void tokenizer_notify_token_handled();
-
-// TODO: use bison reentrant tokenizer and parser at some point. Will take some refactoring, but it's a better style.
-// This will become a parameter to yylex.
-extern struct tokenizer_location tokenizer_current_location;
-
-int yylex();
+extern FILE* yyin;
+extern int   yylex(void);
