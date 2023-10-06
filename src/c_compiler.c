@@ -30,6 +30,56 @@ static const cc_type_access_modifier cc_type_modifier_restrict = 0x2;
 static const cc_type_access_modifier cc_type_modifier_volatile = 0x4;
 // unref_type * const volatile * const volatile = ...
 
+/* Some examples (should be moved somewher? But I prefer to not waste time with it right now, maybe I wanna progress with the compiler itself.
+ * This works with gcc 13.2.
+struct s {
+    int a;
+};
+
+typedef int; // init list is empty, no instances. It's optional, so gives a clue that we may have an empty typedef. Why not ?:) The syntax allows that.
+
+long int long unsigned typedef c;
+const long static unsigned const int b;
+
+struct n {
+    int e;
+};
+
+// Restrict is allowed only for pointers?
+struct n volatile static const const v;
+
+struct {
+    int r1;
+    int r2;
+    int r3;
+};
+
+// auto int r;
+// signed signed int d;
+int static unsigned long long const m;
+
+struct n typedef e;
+
+int typedef b1, b2;
+
+typedef void c3;
+
+// struct new_struct * { int a1; int a2;};
+
+struct { int y1; int y2;} calc() { }
+
+struct s1 { int y1; int y2;} calc2() { }
+struct s1 calc3() {}
+
+#include <stdio.h>
+int main() {
+    printf("%d", calc().y1);
+    printf("%d", calc2().y1);
+    printf("%d", calc3().y1);
+    return 0;
+}
+*/
+
 enum cc_decl_scope {
 	CC_DECL_GLOBAL,
 	CC_DECL_LOCAL
@@ -147,9 +197,9 @@ void yyerror(char const * string) {
 //   reentrant and support preprocessing.
 // With flex we'd have to redirect output of preprocessor
 //   to a flex tokenizer.
-int cc_read_token(struct cc_state* state) {
+void cc_read_token(struct cc_state* state) {
+    state->cur_token_id = yylex();
     state->cur_token_text = yytext;
-    return yylex();
 }
 
 // Grammar specific types.
@@ -844,8 +894,6 @@ struct cc_decl_specs* decl_specs_new() {
 
 struct cc_type_spec {
     // Type specifier.
-    // After enums and structs next token is identifier, it's name. TODO: locate this in the c99 standard as wording.
-    bool is_base_type;
 
     bool is_signed;       // Can't be signed and unsigned at the same time, signed decl spec can't be duplicated (gcc doesn't allow that also).
     bool is_unsigned;     // If we had unsigned or not. We do not allow duplicate unsigned (gcc doesn't, it knows better).
@@ -861,10 +909,30 @@ struct cc_type_spec {
     bool is_struct;
     bool is_enum;
     bool is_union;
+    // After enums and structs next token is identifier, it's name. TODO: locate this in the c99 standard as wording.
     char* name;     // Struct, enum or union name.
     // Not supported yet, we'd reuse struct, union and enum parsing here.
     // size_t immediate_id; // Type id, in case it's an immediate definition.
 };
+
+bool cc_type_spec_type_specified(struct cc_type_spec* type_spec) {
+    // Checks if type is not specified yet.
+    //   If we've seen int, enum, struct or etc, we can't
+    //   accept a typedef'ed type name. An expression can't
+    //   have two types. GCC would reject that also, I think.
+    // For ints and doubles we may modify type with longs (and
+    //   also unsigned for int). But it's specified for now, until
+    //   we see those modifiers, so we can't change type.
+    return (
+        type_spec->is_signed     || type_spec->is_unsigned     ||
+        type_spec->is_short      || type_spec->long_level != 0 ||
+        type_spec->is_int        || type_spec->is_void         ||
+        type_spec->is_char       || type_spec->is_float        ||
+        type_spec->is_double     || type_spec->is_struct       ||
+        type_spec->is_enum       || type_spec->is_union        ||
+        type_spec->name != NULL
+    );
+}
 
 void cc_parse_decl_specs(struct cc_state* state) {
     struct cc_stor_class stor_class = {0};
@@ -885,7 +953,8 @@ void cc_parse_decl_specs(struct cc_state* state) {
 	// Function specifier.
     bool is_inline = false; // It means we're dealing with a function.
 
-	do {
+    while (true) {
+        printf("state->cur_token_id  = %d\n", state->cur_token_id);
         if (cc_parse_stor_class(state, &stor_class)) {
             continue;
         } else if (state->cur_token_id == keyword_const) {
@@ -911,7 +980,41 @@ void cc_parse_decl_specs(struct cc_state* state) {
 			if (is_inline) { report_error("duplicated inline"); }
 			is_inline = true;
         } else if (state->cur_token_id == keyword_unsigned) {
-
+            if (type_spec.is_struct || type_spec.is_float || type_spec.is_enum || type_spec.is_union || type_spec.name != NULL) {
+                report_error("unsigned is not allowed here");
+            }
+            if (type_spec.is_unsigned) {
+                report_error("duplicated unsigned");
+            }
+            // Implies int, but we don't set it yet. It's
+            //   set in type specifier finalization, where
+            //   we get an unref_type. And then we process
+            //   qualifiers.
+            type_spec.is_unsigned = true;
+            cc_read_token(state);
+        } else if (state->cur_token_id == keyword_int) {
+            if (type_spec.is_struct || type_spec.is_float || type_spec.is_enum || type_spec.is_union || type_spec.name != NULL) {
+                report_error("int is not allowed here, type is already specified");
+            }
+            // GCC also doesn't allow duplicated int.
+            // example: int int a3 = 0;
+            //   two or more data types in declaration specifiers.
+            if (type_spec.is_int) {
+                report_error("duplicated int");
+            }
+            type_spec.is_int = true;
+            cc_read_token(state);
+        } else if (state->cur_token_id == keyword_long) {
+            if (type_spec.is_struct || type_spec.is_float || type_spec.is_enum || type_spec.is_union || type_spec.name != NULL) {
+                report_error("long is not allowed here, type is already specified");
+            }
+            if (type_spec.long_level == 2) {
+                // GCC would complain, that long long long is too long for GCC :)
+                report_error("too many longs, long long is maximum");
+            }
+            // Same as with unsigned, implies int, but field is left intact to store if int keyword itself is present.
+            type_spec.long_level += 1;
+            cc_read_token(state);
         } else if (state->cur_token_id == keyword_struct) {
             if (type_spec.is_struct || type_spec.is_enum || type_spec.is_union) { report_error("duplicated enum or struct or union, only one per type."); }
             type_spec.is_struct = true;
@@ -947,7 +1050,7 @@ void cc_parse_decl_specs(struct cc_state* state) {
             type_spec.is_enum = true;
             cc_read_token(state);
             // TODO.
-        } else if (state->cur_token_id == identifier && expr_type == NULL) {
+        } else if (state->cur_token_id == identifier && !cc_type_spec_type_specified(&type_spec)) {
             // Only one type name is allowed in type specifiers.
 
 			// In every declaration there's at least
@@ -976,7 +1079,16 @@ void cc_parse_decl_specs(struct cc_state* state) {
 				printf("Found a decl.\n");
 			}
 		} else break; // Decl specifiers ended.
-    } while (yylex() != eof);
+    };
+    // Create a struct with needed info.
+    //   Also tell, what it is. Return storage modifiers, it should
+    //   be a decl field. So if type was a typedef, it's stored in decl
+    //   struct somewhere. Source storage modifiers.
+    printf("Done parsing decl specifiers, next token is %s (probably init_list that will specify instances, and it also may initialize them also).\n", state->cur_token_text);
+    printf("type_spec.long_level = %d.\n", type_spec.long_level);
+    fflush(stdout);
+    // TODO: free memory!!!
+
 }
 
 void cc_parse_decl(struct cc_state* state) {
