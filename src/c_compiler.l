@@ -1,5 +1,7 @@
 /* Source of the syntax: https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf, page 61, part 6.4, C99. */
 
+/* %option reentrant */
+
 /* TODO: if comments are stripped by preprocessor, move comments to preprocessor. */
 
 /* TODO: put locations of grammar rules as done in parser. */
@@ -17,20 +19,22 @@
 %option never-interactive
 
 %{
-	#include "tokenizer.h"
+	#include "c_compiler.h"
 %}
 
 /* Track line numbers as well. */
+/*
 %option yylineno 
 %{
 	#include <assert.h>
-	#define YY_USER_ACTION assert(yylineno > 0); tokenizer_current_location.line = (size_t) yylineno;
+	#define YY_USER_ACTION assert(yylineno > 0); cc_current_location.line = (size_t) yylineno;
 	#include "tokenizer.h"
-	struct tokenizer_location tokenizer_current_location = {0};
+	struct cc_location cc_current_location = {0};
 	
 	#include <string.h>
 	void accnt_mltln_comment_in_location(char const* text);
 %}
+*/
 
 /*
 token:
@@ -336,36 +340,45 @@ Paragraph 6.4.2.1, semantics:
    top one. Mb check if needed.
 */
 
+/* Lines like
+   # 34 "/usr/include/x86_64-linux-gnu/bits/libc-header-start.h" 2 3 4
+   Signify include paths. We just skip them for now.
+*/
+
 %%
-{blank}                                  { tokenizer_current_location.col += 1;                }
-\r\n?|\n                                 { tokenizer_current_location.col = 1;                 }
+
+"#".*\n                                  { }
+
+{blank}                                  { /* cc_current_location.col += 1; */               }
+\r\n?|\n                                 { /* cc_current_location.col = 1; */                }
 
 "//".*                                   { /* location column is updated in the rule for \r and \n. */ }
-"/*"([^*]|[*][^/])*"*/"                  { accnt_mltln_comment_in_location(yytext);            }
+"/*"([^*]|[*][^/])*"*/"                  { /* return cc_handle_comment(yytext); */           }
 
-{keyword}                                { return tokenizer_handle_keyword(yytext);            }
+{keyword}                                { return cc_handle_keyword(yytext);            }
 
-{identifier}                             { return tokenizer_handle_identifier(yytext);         }
+{identifier}                             { return cc_handle_identifier(yytext);         }
 
-{integer_constant}                       { return tokenizer_handle_integer_constant(yytext);   }
+{integer_constant}                       { return cc_handle_integer_constant(yytext);   }
 
-{decimal_floating_constant}              { return tokenizer_handle_floating_constant(yytext);  }
-{hexadecimal_floating_constant}          { return tokenizer_handle_floating_constant(yytext);  }
+{decimal_floating_constant}              { return cc_handle_floating_constant(yytext);  }
+{hexadecimal_floating_constant}          { return cc_handle_floating_constant(yytext);  }
 
-{character_constant}                     { return tokenizer_handle_character_constant(yytext); }
-{string_literal}                         { return tokenizer_handle_string_literal(yytext);     }
+{character_constant}                     { return cc_handle_character_constant(yytext); }
+{string_literal}                         { return cc_handle_string_literal(yytext);     }
 
-{punctuator}                             { return tokenizer_handle_punctuator(yytext);         }
+{punctuator}                             { return cc_handle_punctuator(yytext);         }
 
-.                                        { return tokenizer_handle_invalid_token(yytext);      }
+.                                        { return cc_handle_invalid_token(yytext);      }
 %%
 
 #include <stdint.h>
 
 // TODO: check newlines aren't counted twice for multiline comments.
-static uint32_t count_newlines(char const* text) {
+//static uint32_t count_newlines(char const* text) {
 	// TODO: check file size before even reading it. Not more than 512MB. Select a different data type. uint32_t can hold 512MB.
 	// TODO: use uint32_t in token_location and ast_location.
+/*
 	uint32_t num_newlines = 0;
 	for (; *text != '\0'; ++text) {
 		if (*text == '\r') {
@@ -380,15 +393,18 @@ static uint32_t count_newlines(char const* text) {
 	}
 	return num_newlines;
 }
+*/
 
-void accnt_mltln_comment_in_location(const char* text) {
+/*
+void cc_handle_comment(const char* text) {
 	uint32_t num_lines = count_newlines(text);
-	tokenizer_current_location.line += num_lines;
+	cc_current_location.line += num_lines;
 	if (num_lines > 0) {
-		tokenizer_current_location.col = 1;
+		// cc_current_location.col = 1;
 	}
 }
+*/
 
-void tokenizer_notify_token_handled() {
-	tokenizer_current_location.col += strlen(yytext);
+void cc_notify_token_handled() {
+	// cc_current_location.col += strlen(yytext);
 }

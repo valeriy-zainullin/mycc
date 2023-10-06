@@ -16,3 +16,4 @@ build/
 **/x64/Debug
 *.res
 TX/
+CMakeLists.txt.user
