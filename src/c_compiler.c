@@ -1084,7 +1084,7 @@ void cc_parse_decl_specs(struct cc_state* state) {
     //   Also tell, what it is. Return storage modifiers, it should
     //   be a decl field. So if type was a typedef, it's stored in decl
     //   struct somewhere. Source storage modifiers.
-    printf("Done parsing decl specifiers, next token is %s (probably init_list that will specify instances, and it also may initialize them also).\n", state->cur_token_text);
+    printf("Done parsing decl specifiers, next token is %s (probably init_list that will specify instances, and it also may initialize them).\n", state->cur_token_text);
     printf("type_spec.long_level = %d.\n", type_spec.long_level);
     fflush(stdout);
     // TODO: free memory!!!
